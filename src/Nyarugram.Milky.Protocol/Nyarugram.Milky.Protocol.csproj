@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Library</OutputType>
+    <RootNamespace>Nyarugram.Milky.Protocol</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Google.Protobuf" Version="3.28.3" />
+    <PackageReference Include="Grpc.Tools" Version="2.68.1" PrivateAssets="All" />
+  </ItemGroup>
+
+  <!-- The proto copy is pinned in-repo. Never reference a sibling checkout at build time. -->
+  <ItemGroup>
+    <Protobuf Include="..\..\protocol\botgram_rpc.proto" GrpcServices="None" Link="Protocol\botgram_rpc.proto" />
+  </ItemGroup>
+
+</Project>

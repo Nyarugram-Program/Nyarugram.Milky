@@ -1,0 +1,13 @@
+bin/
+obj/
+*.user
+.vs/
+.idea/
+TestResults/
+artifacts/
+*.log
+logs/
+data/
+config/local.json
+config/*.secret.json
+.workbuddy/

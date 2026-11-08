@@ -1,0 +1,16 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <RootNamespace>Nyarugram.Milky.Host</RootNamespace>
+    <AssemblyName>nyarugram-milky</AssemblyName>
+    <Version>0.1.0</Version>
+    <UserSecretsId>nyarugram-milky-host</UserSecretsId>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Nyarugram.Milky.Core\Nyarugram.Milky.Core.csproj" />
+    <ProjectReference Include="..\Nyarugram.Milky.Media\Nyarugram.Milky.Media.csproj" />
+  </ItemGroup>
+
+</Project>

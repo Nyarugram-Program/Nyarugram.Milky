@@ -1,0 +1,125 @@
+diff --git a/tgcalls/tgcalls/v2/NativeNetworkingImpl.cpp b/tgcalls/tgcalls/v2/NativeNetworkingImpl.cpp
+index b067cf5..423bdfc 100644
+--- a/tgcalls/tgcalls/v2/NativeNetworkingImpl.cpp
++++ b/tgcalls/tgcalls/v2/NativeNetworkingImpl.cpp
+@@ -837,7 +837,10 @@ void NativeNetworkingImpl::checkConnectionTimeout() {
+         }
+ 
+         int64_t currentTimestamp = rtc::TimeMillis();
+-        const int64_t maxTimeout = 20000;
++        // Media signaling is relayed through the Nyarugram backend and the adapter's
++        // synchronization loop, not pushed directly. Keep the ICE setup window wide
++        // enough for that path; the adapter enforces its own media-ready bound.
++        const int64_t maxTimeout = 45000;
+ 
+         if (!strong->_isConnected && strong->_lastDisconnectedTimestamp + maxTimeout < currentTimestamp) {
+             RTC_LOG(LS_INFO) << "NativeNetworkingImpl timeout " << (currentTimestamp - strong->_lastDisconnectedTimestamp) << " ms";
+diff --git a/voip/webrtc/common_video/h265/h265_pps_parser.h b/voip/webrtc/common_video/h265/h265_pps_parser.h
+index 28c95ea..397c773 100644
+--- a/voip/webrtc/common_video/h265/h265_pps_parser.h
++++ b/voip/webrtc/common_video/h265/h265_pps_parser.h
+@@ -11,6 +11,8 @@
+ #ifndef COMMON_VIDEO_H265_PPS_PARSER_H_
+ #define COMMON_VIDEO_H265_PPS_PARSER_H_
+ 
++#include <cstdint>
++
+ #include "absl/types/optional.h"
+ 
+ namespace rtc {
+diff --git a/voip/webrtc/rtc_base/system/warn_current_thread_is_deadlocked.cc b/voip/webrtc/rtc_base/system/warn_current_thread_is_deadlocked.cc
+index d39b040..3f2d64a 100644
+--- a/voip/webrtc/rtc_base/system/warn_current_thread_is_deadlocked.cc
++++ b/voip/webrtc/rtc_base/system/warn_current_thread_is_deadlocked.cc
+@@ -1,23 +1,18 @@
+ /*
+- *  Copyright 2019 The WebRTC Project Authors. All rights reserved.
+- *
+- *  Use of this source code is governed by a BSD-style license
+- *  that can be found in the LICENSE file in the root of the source
+- *  tree. An additional intellectual property rights grant can be found
+- *  in the file PATENTS.  All contributing project authors may
+- *  be found in the AUTHORS file in the root of the source tree.
++ * Linux build adaptation of WebRTC's deadlock warning helper.
++ * The Android source pulls in sdk/android stacktrace support, which is not part
++ * of the Linux media build. The warning is diagnostic only, so drop the stack
++ * trace and keep the log line.
+  */
+ 
+ #include "rtc_base/system/warn_current_thread_is_deadlocked.h"
+ 
+ #include "rtc_base/logging.h"
+-#include "sdk/android/native_api/stacktrace/stacktrace.h"
+ 
+ namespace webrtc {
+ 
+ void WarnThatTheCurrentThreadIsProbablyDeadlocked() {
+-  RTC_LOG(LS_WARNING) << "Probable deadlock:";
+-  RTC_LOG(LS_WARNING) << StackTraceToString(GetStackTrace());
++  RTC_LOG(LS_WARNING) << "Probable deadlock detected";
+ }
+ 
+ }  // namespace webrtc
+diff --git a/voip/webrtc/video/video_source_sink_controller.cc b/voip/webrtc/video/video_source_sink_controller.cc
+index d5b79d2..1f82330 100644
+--- a/voip/webrtc/video/video_source_sink_controller.cc
++++ b/voip/webrtc/video/video_source_sink_controller.cc
+@@ -17,7 +17,6 @@
+ #include "rtc_base/logging.h"
+ #include "rtc_base/numerics/safe_conversions.h"
+ #include "rtc_base/strings/string_builder.h"
+-#include "tgnet/FileLog.h"
+ 
+ namespace webrtc {
+ VideoSourceSinkController::VideoSourceSinkController(
+@@ -37,7 +36,6 @@ void VideoSourceSinkController::SetSource(
+ 
+   rtc::VideoSourceInterface<VideoFrame>* old_source = source_;
+   source_ = source;
+-    DEBUG_D("$%d: SetSource(): new source as %ld", a, source_);
+ 
+   if (old_source != source && old_source)
+     old_source->RemoveSink(sink_);
+@@ -61,14 +59,10 @@ void VideoSourceSinkController::RequestRefreshFrame() {
+ 
+ void VideoSourceSinkController::PushSourceSinkSettings() {
+   RTC_DCHECK_RUN_ON(&sequence_checker_);
+-  DEBUG_D("$%d: PushSourceSinkSettings(): 1", a);
+   if (!source_)
+     return;
+-    DEBUG_D("$%d: PushSourceSinkSettings(): 2 src=%ld", a, source_);
+   rtc::VideoSinkWants wants = CurrentSettingsToSinkWants();
+-    DEBUG_D("$%d: PushSourceSinkSettings(): 3", a);
+   source_->AddOrUpdateSink(sink_, wants);
+-    DEBUG_D("$%d: PushSourceSinkSettings(): 4", a);
+ }
+ 
+ VideoSourceRestrictions VideoSourceSinkController::restrictions() const {
+diff --git a/voip/webrtc/video/video_stream_encoder.cc b/voip/webrtc/video/video_stream_encoder.cc
+index e13ac47..8a1de5c 100644
+--- a/voip/webrtc/video/video_stream_encoder.cc
++++ b/voip/webrtc/video/video_stream_encoder.cc
+@@ -56,7 +56,6 @@
+ #include "video/config/encoder_stream_factory.h"
+ #include "video/frame_cadence_adapter.h"
+ #include "video/frame_dumping_encoder.h"
+-#include "tgnet/FileLog.h"
+ 
+ namespace webrtc {
+ 
+@@ -708,7 +707,6 @@ VideoStreamEncoder::VideoStreamEncoder(
+           ParseVp9LowTierCoreCountThreshold(field_trials)),
+       experimental_encoder_thread_limit_(ParseEncoderThreadLimit(field_trials)),
+       encoder_queue_(std::move(encoder_queue)) {
+-    DEBUG_D("new VideoStreamEncoder$%d!!!!!!", b);
+   TRACE_EVENT0("webrtc", "VideoStreamEncoder::VideoStreamEncoder");
+   RTC_DCHECK_RUN_ON(worker_queue_);
+   RTC_DCHECK(encoder_stats_observer);
+@@ -741,7 +739,6 @@ VideoStreamEncoder::VideoStreamEncoder(
+ }
+ 
+ VideoStreamEncoder::~VideoStreamEncoder() {
+-  DEBUG_D("~VideoStreamEncoder$%d!!!!!!",b);
+   RTC_DCHECK_RUN_ON(worker_queue_);
+   RTC_DCHECK(!video_source_sink_controller_.HasSource())
+       << "Must call ::Stop() before destruction.";

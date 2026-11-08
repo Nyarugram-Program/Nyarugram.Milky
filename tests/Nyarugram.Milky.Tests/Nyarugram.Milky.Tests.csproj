@@ -1,0 +1,25 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <IsPackable>false</IsPackable>
+    <RootNamespace>Nyarugram.Milky.Tests</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.11.1" />
+    <PackageReference Include="xunit" Version="2.9.2" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="2.8.2" />
+    <PackageReference Include="Xunit.SkippableFact" Version="1.5.23" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\Nyarugram.Milky.Core\Nyarugram.Milky.Core.csproj" />
+    <ProjectReference Include="..\..\src\Nyarugram.Milky.Media\Nyarugram.Milky.Media.csproj" />
+    <ProjectReference Include="..\..\src\Nyarugram.Milky.Host\Nyarugram.Milky.Host.csproj" />
+  </ItemGroup>
+
+</Project>

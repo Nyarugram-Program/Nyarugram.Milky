@@ -1,0 +1,74 @@
+{
+  "schema_version": 1,
+  "description": "Pinned source identity for the Nyarugram Milky native media agent. prepare-source.sh copies this exact subset, applies patches/0001-linux-build.patch and verifies both tree hashes.",
+  "botgram": {
+    "repository": "Botgram Android (deployment source; GPL-2.0 app, media subtree as noted below)",
+    "commit": "2fab5dcf4a574c0aae7a60ed3fb1e959e2062cb5",
+    "paths": [
+      "TMessagesProj/jni/voip",
+      "TMessagesProj/jni/openssl",
+      "TMessagesProj/jni/third_party/libsrtp",
+      "TMessagesProj/jni/third_party/usrsctplib",
+      "TMessagesProj/jni/third_party/rnnoise",
+      "TMessagesProj/jni/third_party/pffft"
+    ]
+  },
+  "components": [
+    {
+      "name": "tgcalls",
+      "directory_prefix": "native/tgcalls",
+      "commit": "1398c1648f52666b3249111ec3c5b531946e41e4",
+      "repository": "https://github.com/TelegramMessenger/tgcalls",
+      "license": "LGPL-3.0"
+    },
+    {
+      "name": "boringssl",
+      "directory_prefix": "native/boringssl",
+      "commit": "2b44a3701a4788e1ef866ddc7f143060a3d196c9",
+      "repository": "https://boringssl.googlesource.com/boringssl",
+      "license": "OpenSSL/ISC mixed"
+    },
+    {
+      "name": "abseil-cpp",
+      "directory_prefix": "native/abseil-cpp",
+      "commit": "54fac219c4ef0bc379dfffb0b8098725d77ac81b",
+      "repository": "https://github.com/abseil/abseil-cpp",
+      "license": "Apache-2.0"
+    },
+    {
+      "name": "opus",
+      "directory_prefix": "native/opus",
+      "commit": "22244de5a79bd1d6d623c32e72bf1954b56235be",
+      "repository": "https://github.com/xiph/opus",
+      "license": "BSD-3-Clause"
+    },
+    {
+      "name": "libyuv",
+      "directory_prefix": "native/libyuv",
+      "commit": "28ce69c2744a6aafdb58564e7b884aec3f66be5f",
+      "repository": "https://chromium.googlesource.com/libyuv/libyuv",
+      "license": "BSD-3-Clause"
+    },
+    {
+      "name": "libvpx",
+      "directory_prefix": "native/libvpx",
+      "commit": "1024874c5919305883187e2953de8fcb4c3d7fa6",
+      "repository": "https://github.com/webmproject/libvpx",
+      "license": "BSD-3-Clause"
+    },
+    {
+      "name": "openh264",
+      "directory_prefix": "native/openh264",
+      "commit": "652bdb7719f30b52b08e506645a7322ff1b2cc6f",
+      "repository": "https://github.com/cisco/openh264",
+      "license": "BSD-3-Clause",
+      "header_only": true
+    }
+  ],
+  "libvpx_build": {
+    "configure_args": "--target=x86_64-linux-gcc --disable-examples --disable-tools --disable-docs --disable-unit-tests --disable-webm-io --enable-vp8 --enable-vp9 --disable-shared --enable-static",
+    "version": "v1.16.0"
+  },
+  "prepared_tree_sha256": "4214a4470c48d507a012992c6dbd73c10ff0f7b80e2b9600c9a66b186208b481",
+  "patched_tree_sha256": "d5608efea5c38425261164defff873db7d508b1397a4a78ab7063018eeff88e8"
+}

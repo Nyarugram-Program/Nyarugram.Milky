@@ -1,0 +1,20 @@
+{
+  "milky": {
+    "version": "1.3.0",
+    "schema_file": "config/milky-1.3.0.openapi.json",
+    "sha256": "8ccb6118854c4c76f16f8ba105e3fa8e376edc9c79e93558becbd12f81d27614",
+    "source": "https://github.com/SaltifyDev/milky",
+    "source_commit": "151dd90e3df30d96df54d4fb94def32797d44c62",
+    "fetched_from": "https://milky.ntqqrev.org/raw/openapi/openapi.json"
+  },
+  "backend_protocol": {
+    "file": "protocol/botgram_rpc.proto",
+    "package": "botgram.rpc.v1",
+    "protocol_major": 1,
+    "sha256": "0d2d4a4cd038b0cf912c6b0d2534388f6fc752bffcfca004c8addb79093c1be6",
+    "source": "Botgram.Backend Protocol/botgram_rpc.proto",
+    "source_commit": "459761491e117e75b747959236786702bffb5393",
+    "protoc": "Grpc.Tools 2.68.1",
+    "google_protobuf": "3.28.3"
+  }
+}
