@@ -212,6 +212,7 @@ public sealed class SyncService : BackgroundService
         var rows = new List<MessageRow>(page.Messages.Count);
         var skips = new List<(long MessageId, string Reason)>();
         var events = new List<OutboxMessage>(page.Messages.Count);
+        var received = new List<(long MessageId, long PeerId, long SenderId, bool Group)>();
         var selfId = context.Account.Uin;
         var now = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
 
@@ -245,6 +246,7 @@ public sealed class SyncService : BackgroundService
                 message.Outgoing));
 
             if (message.Outgoing) continue;
+            received.Add((message.MessageId, milky.PeerId, milky.SenderId, milky is GroupMessage));
             var evt = new MilkyEvent
             {
                 Time = now,
@@ -320,6 +322,16 @@ public sealed class SyncService : BackgroundService
         var state = page.State ?? new P.SyncState();
         var cursor = new SyncCursor(state.Pts, state.Qts, state.Seq, state.DateMs, true);
         await _store.CommitAsync(context.Account.AccountId, rows, skips, events, cursor, ct).ConfigureAwait(false);
+
+        // Logged only after the cursor commit, so a transient failure does not report a
+        // message that will be replayed. Message content is never written to logs.
+        foreach (var item in received)
+        {
+            _logger.LogInformation(
+                "message_receive id={MessageId} peer={PeerKind}:{PeerId} sender={SenderId}",
+                item.MessageId, item.Group ? "group" : "user", item.PeerId, item.SenderId);
+        }
+
         _logger.LogDebug("applied {Messages} messages, {Skipped} skipped, {Events} events, pts={Pts}",
             rows.Count, skips.Count, events.Count, state.Pts);
     }

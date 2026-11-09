@@ -63,6 +63,7 @@ public sealed class AdapterFixture : IAsyncLifetime
             SyncInterval = TimeSpan.FromMinutes(5),
             MediaEngine = "loopback",
             BackgroundSync = false,
+            BackgroundPresence = false,
             BackgroundSendReconcile = false,
             SignalingMaxAttempts = 3,
             SignalingRetryBaseDelay = TimeSpan.FromMilliseconds(100),

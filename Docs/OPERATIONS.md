@@ -82,6 +82,8 @@ nyarugram-milky version
 | `runtime.reconcile_interval_seconds` | 否 | 发送/呼叫对账间隔，默认 10 |
 | `runtime.replay_batch_size` | 否 | 单次投递给消费者的最大事件数，默认 200 |
 | `runtime.background_sync` | 否 | 后台差分轮询，默认 true；仅自动化测试会关闭 |
+| `runtime.foreground_presence` | 否 | `serve` 期间上报前台在线心跳，默认 true；关闭后账号对其他客户端显示离线 |
+| `runtime.presence_interval_seconds` | 否 | 在线心跳间隔，默认 30，范围 10..50；后端在线窗口为 60 秒，必须小于窗口 |
 | `runtime.background_send_reconcile` | 否 | 后台发送对账，默认 true；仅自动化测试会关闭 |
 | `runtime.background_call_maintenance` | 否 | 后台呼叫对账与媒体重试，默认 true |
 | `runtime.signaling_queue_capacity` | 否 | 每个媒体实例的出站信令队列容量，默认 64，范围 1..1024；溢出会结束该通话 |
@@ -278,6 +280,8 @@ NoneBot 插件只能承载消息与控制面；双向音频需要 `pcm-bridge.mj
 |---|---|
 | 启动即报 schema 哈希不匹配 | `config/milky-1.3.0.openapi.json` 被改动。恢复锁定副本或同步更新 `config/locks.json` 后重新验证 |
 | `-403 未登录` | 执行 `login`；`status` 可查看会话是否已过期 |
+| 手机端显示机器人账号离线 | 确认 `serve` 常驻且未关闭 `runtime.foreground_presence`；心跳每 30 秒上报一次，停止服务后约 60 秒转为离线 |
+| 收到消息但日志没有输出 | 收到消息会输出 `message_receive` Information 日志（只含消息 ID、会话与发送者，不含正文）；`login` 只是一次性登录，必须运行 `serve` 才会同步 |
 | 事件长期收不到 | 确认 `/event` 已连接；`/health` 的 `event_subscribers` 为 0 表示没有消费者，事件会在宽限期后被回收 |
 | 进程重启后无法拨号 | 启动时会把上一代会话未结束的呼叫标记为 `failed`（原因 `restart`），随后可重拨 |
 | PostgreSQL 不可达 | 服务返回 503；恢复后无需重启，连接池自动重建 |

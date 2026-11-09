@@ -159,6 +159,9 @@ public sealed class FakeBackend : IAsyncDisposable
         get { lock (_gate) return _pts; }
     }
 
+    /// <summary>Operation and explicit foreground flag of the most recent business RPC.</summary>
+    public (P.RpcRequest.OperationOneofCase Operation, bool? Foreground)? LastBusinessRequest { get; private set; }
+
     public P.Message InjectFriendMessage(string text)
     {
         lock (_gate)
@@ -487,6 +490,7 @@ public sealed class FakeBackend : IAsyncDisposable
         var request = await ReadAsync(context);
         var response = new P.RpcResponse { ProtocolMajor = 1, RequestId = request.RequestId };
         var now = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+        LastBusinessRequest = (request.OperationCase, request.HasForeground ? request.Foreground : null);
 
         var fault = _nextFault;
         if (fault is { } candidate
@@ -557,6 +561,9 @@ public sealed class FakeBackend : IAsyncDisposable
                 }
                 break;
             }
+            case P.RpcRequest.OperationOneofCase.GetState:
+                response.GetState = new P.SyncState { Pts = _pts, DateMs = now };
+                break;
             case P.RpcRequest.OperationOneofCase.GetContacts:
                 response.GetContacts = new P.ContactList { SavedCount = 1 };
                 response.GetContacts.Contacts.Add(new P.Contact

@@ -28,6 +28,8 @@ public sealed class MilkyOptions
     public TimeSpan MediaTokenLifetime { get; init; } = TimeSpan.FromMinutes(10);
     public bool AutoAnswer { get; init; }
     public bool BackgroundSync { get; init; } = true;
+    public bool BackgroundPresence { get; init; } = true;
+    public TimeSpan PresenceInterval { get; init; } = TimeSpan.FromSeconds(30);
     public bool BackgroundSendReconcile { get; init; } = true;
     public bool BackgroundCallMaintenance { get; init; } = true;
     public int MediaMaxAttempts { get; init; } = 6;
@@ -119,6 +121,9 @@ public sealed class MilkyOptions
             MediaTokenLifetime = TimeSpan.FromMinutes(runtime.GetValue("media_token_lifetime_minutes", 10)),
             AutoAnswer = runtime.GetValue("auto_answer", false),
             BackgroundSync = runtime.GetValue("background_sync", true),
+            BackgroundPresence = runtime.GetValue("foreground_presence", true),
+            PresenceInterval = TimeSpan.FromSeconds(
+                Math.Clamp(runtime.GetValue("presence_interval_seconds", 30), 10, 50)),
             BackgroundSendReconcile = runtime.GetValue("background_send_reconcile", true),
             BackgroundCallMaintenance = runtime.GetValue("background_call_maintenance", true),
             MediaMaxAttempts = runtime.GetValue("media_max_attempts", 6),
@@ -181,6 +186,8 @@ public sealed class MilkyOptions
         MediaTokenLifetime = MediaTokenLifetime,
         AutoAnswer = snapshot.AutoAnswer ?? AutoAnswer,
         BackgroundSync = BackgroundSync,
+        BackgroundPresence = BackgroundPresence,
+        PresenceInterval = PresenceInterval,
         BackgroundSendReconcile = BackgroundSendReconcile,
         BackgroundCallMaintenance = BackgroundCallMaintenance,
         MediaMaxAttempts = MediaMaxAttempts,

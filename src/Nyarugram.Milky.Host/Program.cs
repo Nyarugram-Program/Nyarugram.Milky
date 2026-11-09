@@ -252,6 +252,8 @@ public static class Program
                 reconcile_interval_seconds = 10,
                 replay_batch_size = 200,
                 background_sync = true,
+                foreground_presence = true,
+                presence_interval_seconds = 30,
                 background_send_reconcile = true,
                 background_call_maintenance = true,
                 media_max_attempts = 6,

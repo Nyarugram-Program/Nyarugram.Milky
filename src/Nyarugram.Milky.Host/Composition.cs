@@ -60,6 +60,8 @@ public static class Composition
             ReconcileInterval = options.ReconcileInterval,
             ProfileCacheTtl = options.ProfileCacheTtl,
             BackgroundSync = options.BackgroundSync,
+            BackgroundPresence = options.BackgroundPresence,
+            PresenceInterval = options.PresenceInterval,
             BackgroundSendReconcile = options.BackgroundSendReconcile,
             BackgroundCallMaintenance = options.BackgroundCallMaintenance,
             MediaMaxAttempts = options.MediaMaxAttempts,
@@ -102,6 +104,8 @@ public static class Composition
         services.AddSingleton<SyncService>();
         services.AddHostedService(sp => sp.GetRequiredService<SyncService>());
         services.AddHostedService<EventHintListener>();
+        services.AddSingleton<PresenceReporter>();
+        services.AddHostedService(sp => sp.GetRequiredService<PresenceReporter>());
         services.AddHostedService<OutboxDispatcher>();
         services.AddHostedService<SendReconciler>();
         services.AddHostedService<CallMaintenanceWorker>();

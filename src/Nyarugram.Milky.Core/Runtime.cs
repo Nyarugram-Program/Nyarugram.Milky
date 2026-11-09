@@ -168,6 +168,17 @@ public sealed class RuntimeOptions
     /// </summary>
     public bool BackgroundSync { get; init; } = true;
 
+    /// <summary>
+    /// Foreground presence heartbeat. While serving, the adapter asserts that the session
+    /// is active so the backend shows the account online to its contacts.
+    /// </summary>
+    public bool BackgroundPresence { get; init; } = true;
+
+    /// <summary>
+    /// Presence refresh period. Must stay below the backend's 60 second online window.
+    /// </summary>
+    public TimeSpan PresenceInterval { get; init; } = TimeSpan.FromSeconds(30);
+
     /// <summary>Automatic send reconciliation. Disabled by tests that drive it explicitly.</summary>
     public bool BackgroundSendReconcile { get; init; } = true;
 
