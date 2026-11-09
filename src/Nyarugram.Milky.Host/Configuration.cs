@@ -8,6 +8,7 @@ public sealed class MilkyOptions
     public required Uri BackendBaseAddress { get; init; }
     public required string ServerDomain { get; init; }
     public string? CertificatePin { get; init; }
+    public bool LargeClientHello { get; init; }
     public bool AllowPlaintextBackend { get; init; }
     public TimeSpan BackendTimeout { get; init; } = TimeSpan.FromSeconds(30);
 
@@ -48,6 +49,8 @@ public sealed class MilkyOptions
     public string? ManagementSecret { get; init; }
     public TimeSpan ManagementSessionLifetime { get; init; } = TimeSpan.FromHours(8);
     public bool ManagementSecureCookie { get; init; }
+    public SameSiteMode ManagementCookieSameSite { get; init; } = SameSiteMode.Strict;
+    public string[] AllowedOrigins { get; init; } = [];
     public int ManagementLogCapacity { get; init; } = 1000;
 
     /// <summary>Version loaded from PostgreSQL before this process built its runtime services.</summary>
@@ -77,11 +80,29 @@ public sealed class MilkyOptions
         if (managementSecret is { Length: < 16 })
             throw new InvalidOperationException("admin.secret must be at least 16 characters when configured");
 
+        var allowedOrigins = configuration.GetSection("cors:allowed_origins").Get<string[]>() ?? [];
+        allowedOrigins = allowedOrigins.Select(value =>
+        {
+            if (value is null || value.Contains('*')
+                || !Uri.TryCreate(value, UriKind.Absolute, out var origin)
+                || origin.Scheme is not ("http" or "https")
+                || origin.AbsolutePath != "/" || origin.Query.Length != 0
+                || origin.Fragment.Length != 0 || origin.UserInfo.Length != 0)
+                throw new InvalidOperationException("cors.allowed_origins must contain explicit HTTP(S) origins without paths or wildcards");
+            return origin.GetLeftPart(UriPartial.Authority);
+        }).Distinct(StringComparer.OrdinalIgnoreCase).ToArray();
+        if (!Enum.TryParse<SameSiteMode>(admin["cookie_same_site"] ?? "Strict", true, out var sameSite)
+            || sameSite is not (SameSiteMode.Strict or SameSiteMode.Lax or SameSiteMode.None))
+            throw new InvalidOperationException("admin.cookie_same_site must be Strict, Lax or None");
+        if (sameSite == SameSiteMode.None && !admin.GetValue("secure_cookie", false))
+            throw new InvalidOperationException("admin.cookie_same_site=None requires admin.secure_cookie=true and HTTPS");
+
         return new MilkyOptions
         {
             BackendBaseAddress = new Uri(baseAddress, UriKind.Absolute),
             ServerDomain = serverDomain,
             CertificatePin = backend["certificate_sha256_pin"],
+            LargeClientHello = backend.GetValue("large_clienthello", false),
             AllowPlaintextBackend = backend.GetValue("allow_plaintext", false),
             BackendTimeout = TimeSpan.FromSeconds(backend.GetValue("request_timeout_seconds", 30)),
             ConnectionString = connectionString,
@@ -112,6 +133,8 @@ public sealed class MilkyOptions
             MediaAgentStartup = TimeSpan.FromSeconds(configuration.GetSection("media").GetValue("agent_startup_seconds", 10)),
             MediaAgentLog = configuration.GetSection("media").GetValue("agent_log", false),
             MaxPoolSize = storage.GetValue("max_pool_size", 20),
+            AllowedOrigins = allowedOrigins,
+            ManagementCookieSameSite = sameSite,
             ManagementSecret = managementSecret,
             ManagementSessionLifetime = TimeSpan.FromMinutes(admin.GetValue("session_lifetime_minutes", 480)),
             ManagementSecureCookie = admin.GetValue("secure_cookie", false),
@@ -135,6 +158,7 @@ public sealed class MilkyOptions
         BackendBaseAddress = BackendBaseAddress,
         ServerDomain = ServerDomain,
         CertificatePin = CertificatePin,
+        LargeClientHello = LargeClientHello,
         AllowPlaintextBackend = AllowPlaintextBackend,
         BackendTimeout = BackendTimeout,
         ConnectionString = ConnectionString,
@@ -169,6 +193,8 @@ public sealed class MilkyOptions
         MediaAgentStartup = MediaAgentStartup,
         MediaAgentLog = MediaAgentLog,
         MaxPoolSize = MaxPoolSize,
+        AllowedOrigins = AllowedOrigins,
+        ManagementCookieSameSite = ManagementCookieSameSite,
         ManagementSecret = ManagementSecret,
         ManagementSessionLifetime = ManagementSessionLifetime,
         ManagementSecureCookie = ManagementSecureCookie,

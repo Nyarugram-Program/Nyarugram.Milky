@@ -63,6 +63,7 @@ nyarugram-milky version
 | `backend.base_address` | 是 | 后端地址，必须 `https://`；仅 `allow_plaintext=true` 时允许明文（回环测试用） |
 | `backend.server_domain` | 是 | 后端协议身份域名，需与后端 `Protocol:ServerDomain` 一致 |
 | `backend.certificate_sha256_pin` | 否 | 叶证书 SHA-256 指纹。设置后仍走证书链校验，指纹用于替代 IP 直连的主机名匹配 |
+| `backend.large_clienthello` | 否 | 默认 false；true 时为后端 HTTPS 和 WSS 添加合法 ALPN 填充，使 ClientHello 超过 1500 字节。使用 HTTP/1.1 直连后端，保留证书验证；修改后重启生效。 |
 | `backend.request_timeout_seconds` | 否 | 默认 30 |
 | `storage.connection_string` | 是 | PostgreSQL 连接串，建议独立数据库 |
 | `storage.secret_key` | 是 | base64 的 32 字节密钥，用于 AES-256-GCM 加密会话令牌；必须存放在数据库之外 |
@@ -89,6 +90,43 @@ nyarugram-milky version
 | `runtime.signaling_max_age_seconds` | 否 | 信令在队列中的最长有效期，默认 60；超期按失败处理 |
 
 数据库不存在时，`serve`/`login`/`status` 会从维护库自动创建它，然后执行迁移；不需要外部 `psql`。
+
+## WebUI 跨源连接
+
+WebUI 与 Milky 可以使用不同端口或域名。向 `config/local.json` 顶层添加浏览器打开 WebUI 时使用的来源，来源包含协议、主机和端口。
+
+```json
+{
+  "cors": {
+    "allowed_origins": ["http://192.168.2.10:3456"]
+  }
+}
+```
+
+合并到现有配置后重启 Milky。也可设置环境变量 `NYARUGRAM_cors__allowed_origins__0=http://192.168.2.10:3456`。允许列表默认为空，条目必须是完整 HTTP(S) 来源，不能包含路径、查询、凭据或通配符。
+
+当 Milky 监听 `http://0.0.0.0:8091`，WebUI 实例填写以下入口。
+
+| 字段 | 地址 |
+|---|---|
+| 管理入口 | `http://192.168.2.10:8091/admin/v1` |
+| 业务 HTTP 入口 | `http://192.168.2.10:8091` |
+| 事件入口 | `ws://192.168.2.10:8091/event` |
+
+同一 IP、同一协议下的不同端口属于同站跨源，管理 Cookie 默认 `SameSite=Strict`、HTTP 下 `admin.secure_cookie=false` 即可。管理登录仍使用 `admin.secret`，写操作仍校验 CSRF。HTTP 预检、业务鉴权请求头、事件 SSE、管理日志 SSE、配置版本并发校验与管理会话响应头均支持已允许的来源。WebSocket 校验同一来源允许列表，业务和媒体凭据继续分别校验。
+
+真正跨站的管理访问需要 HTTPS，并设置以下管理 Cookie 配置，保留现有 `admin.secret`。
+
+```json
+{
+  "admin": {
+    "cookie_same_site": "None",
+    "secure_cookie": true
+  }
+}
+```
+
+`cookie_same_site` 支持 `Strict`（默认）、`Lax`、`None`，`None` 必须同时启用 `secure_cookie`。浏览器的第三方 Cookie 限制仍可能阻止跨站管理会话，遇到此限制可使用同站域名或同源入口。HTTPS WebUI 需要连接 HTTPS/WSS Milky，HTTP/WS 会受到浏览器混合内容限制。
 
 ## 事件重放
 

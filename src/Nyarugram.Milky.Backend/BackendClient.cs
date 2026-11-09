@@ -26,6 +26,8 @@ public sealed class BackendOptions
     /// <summary>Permit http:// and ws:// backends. Off by default; loopback tests may enable it.</summary>
     public bool AllowPlaintext { get; init; }
 
+    public bool LargeClientHello { get; init; }
+
     public TimeSpan RequestTimeout { get; init; } = TimeSpan.FromSeconds(30);
 }
 
@@ -64,6 +66,7 @@ public sealed class BackendClient : IDisposable
     private readonly BackendOptions _options;
     private readonly ILogger<BackendClient> _logger;
     private readonly HttpClient _http;
+    private readonly HttpMessageInvoker? _eventTransport;
 
     public BackendClient(BackendOptions options, ILogger<BackendClient> logger)
     {        _options = options;
@@ -74,17 +77,26 @@ public sealed class BackendClient : IDisposable
             throw new InvalidOperationException(
                 "backend.base_address must use https; plaintext requires backend.allow_plaintext=true (loopback tests only)");
 
-        var handler = new SocketsHttpHandler
+        HttpMessageHandler transport;
+        if (options.LargeClientHello && scheme == Uri.UriSchemeHttps)
         {
-            PooledConnectionLifetime = TimeSpan.FromMinutes(5),
-            ConnectTimeout = TimeSpan.FromSeconds(15),
-            AllowAutoRedirect = false,
-            SslOptions = new SslClientAuthenticationOptions
+            transport = new LargeClientHelloHandler(options.BaseAddress, ValidateCertificate);
+            _eventTransport = new HttpMessageInvoker(transport, disposeHandler: false);
+        }
+        else
+        {
+            transport = new SocketsHttpHandler
             {
-                RemoteCertificateValidationCallback = ValidateCertificate,
-            },
-        };
-        _http = new HttpClient(handler) { Timeout = options.RequestTimeout };
+                PooledConnectionLifetime = TimeSpan.FromMinutes(5),
+                ConnectTimeout = TimeSpan.FromSeconds(15),
+                AllowAutoRedirect = false,
+                SslOptions = new SslClientAuthenticationOptions
+                {
+                    RemoteCertificateValidationCallback = ValidateCertificate,
+                },
+            };
+        }
+        _http = new HttpClient(transport) { Timeout = options.RequestTimeout };
         _http.BaseAddress = options.BaseAddress;
     }
 
@@ -245,7 +257,10 @@ public sealed class BackendClient : IDisposable
         socket.Options.KeepAliveInterval = TimeSpan.FromSeconds(20);
         try
         {
-            await socket.ConnectAsync(builder.Uri, ct).ConfigureAwait(false);
+            if (_eventTransport is null)
+                await socket.ConnectAsync(builder.Uri, ct).ConfigureAwait(false);
+            else
+                await socket.ConnectAsync(builder.Uri, _eventTransport, ct).ConfigureAwait(false);
             return socket;
         }
         catch (WebSocketException ex)
@@ -255,5 +270,9 @@ public sealed class BackendClient : IDisposable
         }
     }
 
-    public void Dispose() => _http.Dispose();
+    public void Dispose()
+    {
+        _eventTransport?.Dispose();
+        _http.Dispose();
+    }
 }

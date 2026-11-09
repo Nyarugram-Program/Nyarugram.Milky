@@ -68,6 +68,7 @@ public sealed class AdapterFixture : IAsyncLifetime
             SignalingRetryBaseDelay = TimeSpan.FromMilliseconds(100),
             ManagementSecret = ManagementSecret,
             ManagementSecureCookie = false,
+            AllowedOrigins = ["http://192.168.2.10:3456"],
         };
 
         App = Program.CreateApp(options, RepoRoot());

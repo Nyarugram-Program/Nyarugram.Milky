@@ -157,10 +157,31 @@ public static class Program
 
         Composition.Register(builder.Services, options, contentRoot);
         builder.WebHost.UseUrls(options.ListenUrl);
+        builder.Services.AddCors(cors => cors.AddPolicy("webui", policy =>
+        {
+            policy.WithOrigins(options.AllowedOrigins)
+                .AllowAnyMethod()
+                .AllowAnyHeader()
+                .AllowCredentials()
+                .WithExposedHeaders("ETag", "X-Nyarugram-Admin-Session", "Retry-After");
+        }));
 
         var app = builder.Build();
         app.Lifetime.ApplicationStopping.Register(adminLogBuffer.Dispose);
+        app.UseRouting();
+        app.UseCors("webui");
         app.UseWebSockets(new WebSocketOptions { KeepAliveInterval = TimeSpan.FromSeconds(20) });
+        app.Use(async (context, next) =>
+        {
+            // WebSocket handshakes bypass browser CORS enforcement, so check Origin here.
+            if (context.WebSockets.IsWebSocketRequest
+                && !context.RequestServices.GetRequiredService<AdminAuthService>().OriginMatches(context))
+            {
+                context.Response.StatusCode = StatusCodes.Status403Forbidden;
+                return;
+            }
+            await next(context);
+        });
         MapEndpoints(app);
         return app;
     }
@@ -203,6 +224,7 @@ public static class Program
                 server_domain = "example.local",
                 certificate_sha256_pin = "",
                 allow_plaintext = false,
+                large_clienthello = false,
                 request_timeout_seconds = 30,
             },
             storage = new
@@ -217,6 +239,7 @@ public static class Program
                 access_token = Convert.ToHexString(RandomNumberGenerator.GetBytes(24)).ToLowerInvariant(),
             },
             media = new { engine = "none" },
+            cors = new { allowed_origins = Array.Empty<string>() },
             runtime = new
             {
                 sync_interval_seconds = 5,

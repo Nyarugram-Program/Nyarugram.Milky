@@ -39,6 +39,7 @@ public static class Composition
             BaseAddress = options.BackendBaseAddress,
             ServerDomain = options.ServerDomain,
             CertificateSha256Pin = options.CertificatePin,
+            LargeClientHello = options.LargeClientHello,
             AllowPlaintext = options.AllowPlaintextBackend,
             RequestTimeout = options.BackendTimeout,
         });

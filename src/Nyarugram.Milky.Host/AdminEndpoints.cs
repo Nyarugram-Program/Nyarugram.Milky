@@ -117,10 +117,10 @@ public sealed class AdminEndpoints
 
     private async Task HandleLoginAsync(HttpContext context, CancellationToken ct)
     {
-        if (!AdminAuthService.OriginMatches(context))
+        if (!_auth.OriginMatches(context))
         {
             await ErrorAsync(context, StatusCodes.Status403Forbidden, "origin_rejected",
-                "management writes require the same origin", ct).ConfigureAwait(false);
+                "management writes require the same origin or a configured cors.allowed_origins entry", ct).ConfigureAwait(false);
             return;
         }
         if (!_auth.IsConfigured)
@@ -923,10 +923,10 @@ public sealed class AdminEndpoints
         HttpContext context, AdminSession session, CancellationToken ct)
     {
         AttachSession(context, session);
-        if (!AdminAuthService.OriginMatches(context))
+        if (!_auth.OriginMatches(context))
         {
             await ErrorAsync(context, StatusCodes.Status403Forbidden, "origin_rejected",
-                "management writes require the same origin", ct).ConfigureAwait(false);
+                "management writes require the same origin or a configured cors.allowed_origins entry", ct).ConfigureAwait(false);
             return false;
         }
         if (!_auth.CsrfMatches(context, session))

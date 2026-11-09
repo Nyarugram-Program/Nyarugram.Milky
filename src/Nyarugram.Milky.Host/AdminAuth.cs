@@ -53,7 +53,7 @@ public sealed class AdminAuthService
         {
             HttpOnly = true,
             IsEssential = true,
-            SameSite = SameSiteMode.Strict,
+            SameSite = _options.ManagementCookieSameSite,
             Secure = _options.ManagementSecureCookie || context.Request.IsHttps,
             Path = "/admin/v1",
             Expires = session.ExpiresAt,
@@ -85,7 +85,7 @@ public sealed class AdminAuthService
         context.Response.Cookies.Delete(CookieName, new CookieOptions
         {
             HttpOnly = true,
-            SameSite = SameSiteMode.Strict,
+            SameSite = _options.ManagementCookieSameSite,
             Secure = _options.ManagementSecureCookie || context.Request.IsHttps,
             Path = "/admin/v1",
         });
@@ -100,12 +100,17 @@ public sealed class AdminAuthService
             SHA256.HashData(Encoding.UTF8.GetBytes(session.CsrfToken)));
     }
 
-    /// <summary>Browser origins must be same-origin. Non-browser clients may omit Origin.</summary>
-    public static bool OriginMatches(HttpContext context)
+    /// <summary>Accept same-origin and configured WebUI origins. Non-browser clients may omit Origin.</summary>
+    public bool OriginMatches(HttpContext context)
     {
         var value = context.Request.Headers.Origin.ToString();
         if (value.Length == 0) return true;
         if (!Uri.TryCreate(value, UriKind.Absolute, out var origin)) return false;
+        if (origin.Scheme is not ("http" or "https") || origin.AbsolutePath != "/"
+            || origin.Query.Length != 0 || origin.Fragment.Length != 0 || origin.UserInfo.Length != 0)
+            return false;
+        if (_options.AllowedOrigins.Contains(origin.GetLeftPart(UriPartial.Authority), StringComparer.OrdinalIgnoreCase))
+            return true;
         var request = context.Request;
         var expectedPort = request.Host.Port ?? (request.IsHttps ? 443 : 80);
         var actualPort = origin.IsDefaultPort ? (origin.Scheme == "https" ? 443 : 80) : origin.Port;
