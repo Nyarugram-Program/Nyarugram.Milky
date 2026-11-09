@@ -1,5 +1,6 @@
 """OneBot V11 / NapCat command bridge to a separately running Nyarugram.Milky."""
 
+import asyncio
 import hashlib
 import re
 from urllib.parse import urlsplit
@@ -12,16 +13,19 @@ from nonebot.permission import SUPERUSER
 from nonebot.plugin import PluginMetadata
 from pydantic import BaseModel, SecretStr
 
+from .call_audio import CallAudioError, end_call, play_audio, render_tts
+
 
 class Config(BaseModel):
     nyarugram_milky_url: str
     nyarugram_milky_token: SecretStr
+    nyarugram_tts_voice: str = "zh-CN-XiaoxiaoNeural"
 
 
 __plugin_meta__ = PluginMetadata(
     name="Nyarugram QQ 呼叫",
     description="通过 NapCat 的 QQ 指令发起 Nyarugram 语音呼叫",
-    usage="/call <nyarugram username>（仅 SUPERUSERS）",
+    usage="/call <username> [-tts 文本]（仅 SUPERUSERS）",
     config=Config,
     supported_adapters={"~onebot.v11"},
 )
@@ -42,6 +46,7 @@ if not config.nyarugram_milky_token.get_secret_value():
     raise ValueError("nyarugram_milky_token is required")
 
 client: httpx.AsyncClient | None = None
+tts_jobs: dict[str, asyncio.Task] = {}
 
 
 @get_driver().on_startup
@@ -58,6 +63,10 @@ async def startup() -> None:
 @get_driver().on_shutdown
 async def shutdown() -> None:
     global client
+    tasks = [task for task in tts_jobs.values() if task is not asyncio.current_task()]
+    for task in tasks:
+        task.cancel()
+    await asyncio.gather(*tasks, return_exceptions=True)
     if client is not None:
         await client.aclose()
         client = None
@@ -124,18 +133,57 @@ async def start_call(username: str, request_id: str) -> dict:
 call = on_command("call", permission=SUPERUSER, priority=10, block=True, force_whitespace=True)
 
 
+def parse_arguments(value: str) -> tuple[str, str | None]:
+    match = re.fullmatch(r"@?([A-Za-z0-9_]{1,64})(?:\s+-tts\s+([\s\S]+))?", value.strip())
+    if match is None:
+        raise MilkyError("用法：/call <username> [-tts 文本]，例如 /call alice -tts 今天天气真好")
+    username, text = match.groups()
+    if text is not None:
+        text = text.strip()
+        if not text or len(text) > 300:
+            raise MilkyError("TTS 文本需要包含 1～300 个字符。")
+    return username, text
+
+
 @call.handle()
 async def handle_call(bot: Bot, event: MessageEvent, args: Message = CommandArg()) -> None:
-    username = args.extract_plain_text().strip().removeprefix("@")
-    if re.fullmatch(r"[A-Za-z0-9_]{1,64}", username) is None:
-        await call.finish(MessageSegment.text("用法：/call <nyarugram username>，例如 /call alice"))
+    try:
+        username, text = parse_arguments(args.extract_plain_text())
+    except MilkyError as error:
+        await call.finish(MessageSegment.text(str(error)))
     # Redelivered QQ events reuse their idempotency key, including across bot restarts.
     identity = f"{bot.self_id}:{event.get_session_id()}:{event.message_id}"
     request_id = "qq-call-" + hashlib.sha256(identity.encode()).hexdigest()[:48]
+    if text is not None and request_id in tts_jobs:
+        await call.finish(MessageSegment.text("这条消息对应的 TTS 呼叫正在处理中。"))
+    if text is not None:
+        tts_jobs[request_id] = asyncio.current_task()
     try:
+        if text is not None:
+            capabilities = await call_api("nyarugram_get_capabilities", {})
+            calls = capabilities.get("calls")
+            if not isinstance(calls, dict) or calls.get("voice") is not True:
+                raise MilkyError("TTS 需要 Milky 启用 tgcalls 媒体代理，当前配置没有语音能力。")
+            pcm = await render_tts(text, config.nyarugram_tts_voice)
         info = await start_call(username, request_id)
-    except MilkyError as error:
-        await call.finish(MessageSegment.text(str(error)))
-    await call.finish(MessageSegment.text(
-        f"呼叫请求已提交给 @{username}\n呼叫 ID：{info['call_id']}\n状态：{info.get('state', 'unknown')}"
-    ))
+        if text is None:
+            response = f"呼叫请求已提交给 @{username}\n呼叫 ID：{info['call_id']}\n状态：{info.get('state', 'unknown')}"
+        elif info.get("state") in {"ended", "failed"}:
+            response = "该指令对应的呼叫已经结束。"
+        else:
+            try:
+                await call.send(MessageSegment.text(f"已呼叫 @{username}，等待接听后播报。\n呼叫 ID：{info['call_id']}"))
+                await play_audio(call_api, endpoint, info["call_id"], pcm)
+            finally:
+                end_id = "tts-end-" + hashlib.sha256(request_id.encode()).hexdigest()[:48]
+                await end_call(call_api, info["call_id"], end_id)
+            response = "播报已完成，已挂断。"
+    except (MilkyError, CallAudioError) as error:
+        response = str(error)
+    except Exception as error:
+        logger.warning("Nyarugram call command failed ({})", type(error).__name__)
+        response = "呼叫处理失败，请检查 Milky 状态。"
+    finally:
+        if text is not None:
+            tts_jobs.pop(request_id, None)
+    await call.finish(MessageSegment.text(response))

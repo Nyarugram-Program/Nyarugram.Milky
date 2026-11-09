@@ -1,0 +1,4 @@
+-r requirements-qq-call.txt
+edge-tts==7.3.1
+miniaudio==1.61
+websockets==15.0.1
