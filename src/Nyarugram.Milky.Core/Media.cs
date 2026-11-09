@@ -40,9 +40,10 @@ public sealed record MediaCapability(
     int MinLayer = 0,
     int MaxLayer = 0,
     IReadOnlyList<string>? LibraryVersions = null,
-    bool ReadyOnStart = false)
+    bool ReadyOnStart = false,
+    bool RingOnly = false)
 {
-    /// <summary>Protocol proposal is only valid when the engine declares real layers.</summary>
+    /// <summary>A protocol proposal requires explicit layers and library versions.</summary>
     public bool HasProtocolProposal => MinLayer > 0 && MaxLayer >= MinLayer && LibraryVersions is { Count: > 0 };
 }
 
@@ -122,12 +123,22 @@ public interface IMediaEngine
 /// <summary>Default engine: no media transport is linked into this build.</summary>
 public sealed class UnavailableMediaEngine : IMediaEngine
 {
-    public MediaCapability Capability { get; } = new(
-        Available: false,
-        Audio: false,
-        Video: false,
-        Engine: "none",
-        Reason: "no tgcalls-compatible engine is linked into this build; real bidirectional audio is not verified");
+    public MediaCapability Capability { get; }
+
+    public UnavailableMediaEngine(bool ringOnly = false)
+    {
+        Capability = new(
+            Available: false, Audio: false, Video: false,
+            Engine: ringOnly ? "ring_only" : "none",
+            Reason: ringOnly ? "ring-only invitations; audio and answering are unavailable"
+                : "no tgcalls-compatible engine is linked into this build; real bidirectional audio is not verified",
+            // A valid Android invitation proposal. Accepted ring-only invitations
+            // are discarded before media confirmation or engine startup.
+            UdpP2P: ringOnly, UdpReflector: ringOnly,
+            MinLayer: ringOnly ? 65 : 0, MaxLayer: ringOnly ? 92 : 0,
+            LibraryVersions: ringOnly ? new[] { "13.0.0", "12.0.0" } : null,
+            RingOnly: ringOnly);
+    }
 
     public Task<IMediaSession> StartAsync(
         MediaSessionRequest request, Func<byte[], Task> onSignaling, CancellationToken ct)

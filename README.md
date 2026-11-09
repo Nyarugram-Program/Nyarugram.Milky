@@ -106,3 +106,5 @@ dotnet test tests/Nyarugram.Milky.Tests
 - [交付报告](Docs/DELIVERY-REPORT.md)
 
 Milky 的接口、事件及字段以官方规范为依据。对 Nyarugram 的适配差异记录在本仓库的支持矩阵中。[Milky 官方文档](https://milky.ntqqrev.org/)
+
+现有 NoneBot + NapCat 实例可加载 [QQ 呼叫插件](Docs/NONEBOT-QQ-CALL.md)，通过 `/call <username>` 发起 Nyarugram 呼叫。

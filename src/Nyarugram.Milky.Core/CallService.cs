@@ -141,7 +141,7 @@ public sealed class CallService : ICallUpdateSink, IAsyncDisposable
         if (input.Video && !Capability.Video)
             throw new MilkyActionException(MilkyErrorCode.MediaUnavailable,
                 "video calls are not supported by this build");
-        if (!Capability.Available)
+        if (!Capability.Available && !Capability.RingOnly)
             throw new MilkyActionException(MilkyErrorCode.MediaUnavailable, Capability.Reason!);
         if (!Capability.HasProtocolProposal)
             throw new MilkyActionException(MilkyErrorCode.MediaUnavailable,
@@ -680,6 +680,16 @@ public sealed class CallService : ICallUpdateSink, IAsyncDisposable
                 var reason = MapDiscardReason(call.DiscardReason);
                 var ended = await TransitionAsync(context, current, target, reason, ct).ConfigureAwait(false);
                 await ReleaseMediaAsync(context, ended, "call_finished", ct).ConfigureAwait(false);
+                return;
+            }
+
+            if (Capability.RingOnly && current.Direction == "outgoing"
+                && Rank(target) >= Rank(CallStates.Negotiating))
+            {
+                await EndAsync(context, new EndCallInput
+                {
+                    CallId = current.CallId.ToString(), Reason = "hangup",
+                }, ct).ConfigureAwait(false);
                 return;
             }
 

@@ -32,6 +32,7 @@
 
 | 扩展 API | 主要输入 | 主要结果 |
 |---|---|---|
+| nyarugram_resolve_username | username（支持 @ 前缀） | 稳定 user_id、规范 username |
 | nyarugram_start_call | user_id、video、持久幂等 request_id | 适配服务 call_id、当前状态 |
 | nyarugram_accept_call | call_id、request_id | 当前状态及媒体准备状态 |
 | nyarugram_end_call | call_id、reason、request_id | 幂等终态或待确认状态 |
@@ -158,3 +159,7 @@
 | 视频 | 未实现，发起前拒绝 |
 
 未完成项不得以宿主测试或实例间互通替代。真机验收仍需：机器人呼手机、手机呼机器人、SDP/ICE 在真实网络下的 P2P 与 TURN、弱网与断网恢复、双方重拨。
+
+## 仅响铃提醒模式
+
+设置 `media.engine=ring_only` 可通过真实后端呼叫邀请触发手机来电提醒，无需原生媒体代理。用户拒接、主叫取消和后端超时沿用现有终态处理；被叫接听后主叫在媒体确认前主动挂断。该模式声明 `calls.ring_only=true`、`calls.voice=false` 和 `media_available=false`，不提供音频或接听能力。手机是否显示全屏来电仍取决于 Android 客户端、通知和全屏提醒权限，以及系统设置。

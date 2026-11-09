@@ -589,6 +589,12 @@ public sealed class FakeBackend : IAsyncDisposable
                 response.GetGroups = new P.GroupList();
                 response.GetGroups.Groups.Add(GroupSummary());
                 break;
+            case P.RpcRequest.OperationOneofCase.ResolveUsername:
+                response.ResolveUsername = new P.ResolvedPeer();
+                var named = new[] { SelfSummary(), FriendSummary(), BobSummary() }.FirstOrDefault(
+                    user => string.Equals(user.Username, request.ResolveUsername.Username, StringComparison.OrdinalIgnoreCase));
+                if (named is not null) response.ResolveUsername.Users.Add(named);
+                break;
             case P.RpcRequest.OperationOneofCase.ResolveIdentities:
                 response.ResolveIdentities = new P.ResolvedIdentities { ServerDomain = ServerDomain };
                 if (request.ResolveIdentities.TlUserIds.Contains(AccountUin))

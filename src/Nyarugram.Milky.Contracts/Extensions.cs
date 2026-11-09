@@ -29,6 +29,7 @@ public sealed class NyarugramCapabilities
 public sealed class CapabilityCalls
 {
     [JsonPropertyName("control")] public bool Control { get; init; }
+    [JsonPropertyName("ring_only")] public bool RingOnly { get; init; }
     [JsonPropertyName("voice")] public bool Voice { get; init; }
     [JsonPropertyName("video")] public bool Video { get; init; }
     [JsonPropertyName("auto_answer")] public bool AutoAnswer { get; init; }
@@ -43,6 +44,17 @@ public sealed class CapabilityMedia
     [JsonPropertyName("engine")] public string Engine { get; init; } = "none";
     [JsonPropertyName("opus_inbound")] public bool OpusInbound { get; init; }
     [JsonPropertyName("pcm_outbound")] public bool PcmOutbound { get; init; }
+}
+
+public sealed class ResolveUsernameInput
+{
+    [JsonPropertyName("username")] public string Username { get; set; } = "";
+}
+
+public sealed class ResolveUsernameOutput
+{
+    [JsonPropertyName("user_id")] public long UserId { get; init; }
+    [JsonPropertyName("username")] public string Username { get; init; } = "";
 }
 
 public sealed class StartCallInput

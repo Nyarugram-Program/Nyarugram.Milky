@@ -82,6 +82,10 @@ public static class Composition
             services.AddSingleton<LoopbackMediaEngine>();
             services.AddSingleton<IMediaEngine>(sp => sp.GetRequiredService<LoopbackMediaEngine>());
         }
+        else if (string.Equals(options.MediaEngine, "ring_only", StringComparison.OrdinalIgnoreCase))
+        {
+            services.AddSingleton<IMediaEngine>(new UnavailableMediaEngine(ringOnly: true));
+        }
         else if (string.Equals(options.MediaEngine, "tgcalls", StringComparison.OrdinalIgnoreCase))
         {
             services.AddSingleton(sp => new TgcallsMediaEngine(

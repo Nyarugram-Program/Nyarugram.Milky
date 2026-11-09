@@ -51,7 +51,7 @@ public sealed class MilkyActions
         "get_group_member_list", "get_group_member_info",
         "send_private_message", "send_group_message",
         "get_message", "get_history_messages", "mark_message_as_read",
-        "nyarugram_get_capabilities",
+        "nyarugram_get_capabilities", "nyarugram_resolve_username",
         "nyarugram_start_call", "nyarugram_accept_call", "nyarugram_end_call",
         "nyarugram_get_call", "nyarugram_open_call_media",
     ];
@@ -68,6 +68,7 @@ public sealed class MilkyActions
         var context = _runtime.Require();
         return action switch
         {
+            "nyarugram_resolve_username" => await ResolveUsernameAsync(context, body, ct).ConfigureAwait(false),
             "get_login_info" => await LoginInfoAsync(context, ct).ConfigureAwait(false),
             "get_user_profile" => await UserProfileAsync(context, body, ct).ConfigureAwait(false),
             "get_friend_list" => await FriendListAsync(context, ct).ConfigureAwait(false),
@@ -100,6 +101,18 @@ public sealed class MilkyActions
             "nyarugram_open_call_media" => await _calls.OpenMediaAsync(context, Parse<OpenCallMediaInput>(body), ct).ConfigureAwait(false),
             _ => throw new MilkyActionException(MilkyErrorCode.NotFound, $"unknown action '{action}'"),
         };
+    }
+
+    private async Task<ResolveUsernameOutput> ResolveUsernameAsync(
+        SessionContext context, JsonElement body, CancellationToken ct)
+    {
+        var username = Parse<ResolveUsernameInput>(body).Username?.Trim() ?? "";
+        if (username.StartsWith('@')) username = username[1..];
+        if (username.Length is < 1 or > 64 || !username.All(c => char.IsAsciiLetterOrDigit(c) || c == '_'))
+            throw new MilkyActionException(MilkyErrorCode.BadRequest, "username must contain 1..64 ASCII letters, digits or underscores");
+        var user = await _identities.FindByUsernameAsync(context, username, ct).ConfigureAwait(false)
+            ?? throw new MilkyActionException(MilkyErrorCode.NotFound, "username was not found");
+        return new ResolveUsernameOutput { UserId = user.TlUserId, Username = user.Username };
     }
 
     // ------------------------------------------------------------------- system
@@ -136,7 +149,8 @@ public sealed class MilkyActions
         MessageScenes = ["friend", "group"],
         Calls = new CapabilityCalls
         {
-            Control = _capability.Available,
+            Control = _capability.Available || _capability.RingOnly,
+            RingOnly = _capability.RingOnly,
             Voice = _capability.Audio,
             Video = _capability.Video,
             AutoAnswer = false,
@@ -156,7 +170,9 @@ public sealed class MilkyActions
             "temp conversations are not declared because the backend has none",
             "media/file/record/video message segments are unsupported",
             "encrypted (E2EE) messages are never decrypted",
-            _capability.Available
+            _capability.RingOnly
+                ? "ring-only outgoing invitations; accepted calls are ended before media confirmation"
+                : _capability.Available
                 ? "voice calls enabled; bidirectional PCM is verified between adapter instances, not against an Android device in this build"
                 : "voice and video calls are unavailable in this build",
         ],

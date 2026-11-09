@@ -38,7 +38,7 @@ public sealed class MilkyOptions
     public TimeSpan SignalingRetryBaseDelay { get; init; } = TimeSpan.FromSeconds(1);
     public TimeSpan SignalingMaxAge { get; init; } = TimeSpan.FromSeconds(60);
 
-    /// <summary>"none" (default), "loopback" (host tests only) or "tgcalls" (native agent).</summary>
+    /// <summary>"none" (default), "ring_only", "loopback" (host tests only) or "tgcalls" (native agent).</summary>
     public string MediaEngine { get; init; } = "none";
 
     /// <summary>Command that starts the native media agent, e.g. "/opt/milky/milky_media_agent --agent".</summary>

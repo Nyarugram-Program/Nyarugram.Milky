@@ -69,7 +69,7 @@ nyarugram-milky version
 | `storage.secret_key` | 是 | base64 的 32 字节密钥，用于 AES-256-GCM 加密会话令牌；必须存放在数据库之外 |
 | `milky.listen` | 否 | 默认 `http://127.0.0.1:8080` |
 | `milky.access_token` | 是 | 应用访问凭据，至少 16 字符，恒定时间比较 |
-| `media.engine` | 否 | `none`（默认）、`loopback`（仅测试）或 `tgcalls`（真实语音） |
+| `media.engine` | 否 | `none`（默认）、`ring_only`（仅来电提醒）、`loopback`（仅测试）或 `tgcalls`（真实语音） |
 | `media.agent_command` | tgcalls 必填 | 媒体代理命令行，例如 `<包目录>/media/milky_media_agent --agent` |
 | `media.agent_startup_seconds` | 否 | 代理启动就绪等待，默认 20 |
 | `media.agent_log` | 否 | 是否保留代理自身日志，默认 false |
